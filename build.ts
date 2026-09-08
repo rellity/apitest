@@ -13,5 +13,5 @@ if (!result.success) {
   process.exit(1)
 }
 
-await $`tailwindcss -i src/styles.css -o public/styles.css --minify`
-console.log('built public/app.js and public/styles.css')
+await $`tailwindcss -i src/styles.css -o dist/styles.css --minify`
+console.log('built dist/app.js, dist/styles.css, and dist/fonts/')

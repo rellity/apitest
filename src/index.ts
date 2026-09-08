@@ -1,11 +1,10 @@
 import { Hono } from 'hono'
 import { serveStatic } from 'hono/bun'
-import { todosController } from './controllers/todos'
-import { counterController } from './controllers/counter'
+import { shopController } from './controllers/shop'
 
 const app = new Hono()
   .use('/*', serveStatic({ root: './public' }))
-  .route('/', todosController)
-  .route('/counter', counterController)
+  .get('/', (c) => c.redirect('/shop'))
+  .route('/shop', shopController)
 
 export default app

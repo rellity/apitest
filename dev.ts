@@ -1,4 +1,4 @@
-export {}
+export { }
 
 const procs = [
   ['bun', 'build', 'src/client.ts', '--outdir', 'public', '--entry-naming', 'app.js', '--target', 'browser', '--watch'],

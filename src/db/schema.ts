@@ -1,12 +1,23 @@
-import { pgTable, integer, text, boolean, timestamp } from 'drizzle-orm/pg-core'
+import { pgTable, integer, text, timestamp, boolean } from 'drizzle-orm/pg-core'
 
-export const todos = pgTable('todos', {
+export const users = pgTable('users', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-  title: text('title').notNull(),
-  done: boolean('done').notNull().default(false),
+  name: text('name').notNull(),
+  email: text('email').notNull().unique(),
+  passwordHash: text('password_hash').notNull(),
+  role: text('role').notNull().default('buyer'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 
-export type Todo = typeof todos.$inferSelect
+export type User = typeof users.$inferSelect
+
+export const sessions = pgTable('sessions', {
+  id: text('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id),
+  expiresAt: timestamp('expires_at').notNull(),
+})
+
+export type Session = typeof sessions.$inferSelect
 
 export const products = pgTable('products', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
@@ -17,12 +28,14 @@ export const products = pgTable('products', {
   priceCents: integer('price_cents').notNull(),
   imageUrl: text('image_url').notNull(),
   stock: integer('stock').notNull().default(0),
+  featured: boolean('featured').notNull().default(false),
 })
 
 export type Product = typeof products.$inferSelect
 
 export const orders = pgTable('orders', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  userId: integer('user_id').references(() => users.id),
   name: text('name').notNull(),
   email: text('email').notNull(),
   address: text('address').notNull(),
