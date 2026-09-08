@@ -1,4 +1,8 @@
-export { }
+export {}
+
+await Bun.$`mkdir -p public/fonts`
+await Bun.$`cp assets/fonts/*.woff2 public/fonts/`
+await Bun.$`cp assets/favicon.svg public/favicon.svg`
 
 const procs = [
   ['bun', 'build', 'src/client.ts', '--outdir', 'public', '--entry-naming', 'app.js', '--target', 'browser', '--watch'],
