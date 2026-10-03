@@ -1,10 +1,12 @@
+// Integration tests need Postgres: this import creates + migrates the test DB once.
+import './setup'
 import { beforeEach, expect, test } from 'bun:test'
 import { testClient } from 'hono/testing'
-import { db } from '../src/db'
-import { products } from '../src/db/schema'
-import { apiController } from '../src/controllers/api'
-import { UserModel } from '../src/models/user'
-import type { NewOrderBody } from '../src/lib/schemas'
+import { db } from '../../src/db'
+import { products } from '../../src/db/schema'
+import { apiController } from '../../src/controllers/api'
+import { UserModel } from '../../src/models/user'
+import type { NewOrderBody } from '../../src/lib/schemas'
 import { resetDb } from './helpers'
 
 // testClient is typed from the routes themselves: paths, inputs and JSON
@@ -114,7 +116,7 @@ test("another user's order is 404, not 403", async () => {
 })
 
 test('the API is not behind cookie CSRF checks, but the shop still is', async () => {
-  const { default: app } = await import('../src/index')
+  const { default: app } = await import('../../src/index')
   const headers = await login()
   // A bodyless DELETE with no Origin, like curl sends.
   expect((await app.request('/api/v1/tokens/current', { method: 'DELETE', headers })).status).toBe(204)

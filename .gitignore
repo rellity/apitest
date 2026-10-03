@@ -4,3 +4,7 @@ node_modules/
 # build output
 dist/
 public/
+
+# playwright
+test-results/
+playwright-report/

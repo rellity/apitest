@@ -1,8 +1,10 @@
+// Integration tests need Postgres: this import creates + migrates the test DB once.
+import './setup'
 import { beforeEach, expect, test } from 'bun:test'
 import { eq } from 'drizzle-orm'
-import { db } from '../src/db'
-import { orders, products } from '../src/db/schema'
-import { OrderModel, OutOfStockError } from '../src/models/order'
+import { db } from '../../src/db'
+import { orders, products } from '../../src/db/schema'
+import { OrderModel, OutOfStockError } from '../../src/models/order'
 import { createUser, request, resetDb } from './helpers'
 
 type Product = typeof products.$inferSelect

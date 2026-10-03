@@ -1,8 +1,8 @@
 import { sql } from 'drizzle-orm'
-import app from '../src/index'
-import { db } from '../src/db'
-import { users, type Role } from '../src/db/schema'
-import { SessionModel } from '../src/models/user'
+import app from '../../src/index'
+import { db } from '../../src/db'
+import { users, type Role } from '../../src/db/schema'
+import { SessionModel } from '../../src/models/user'
 
 export const resetDb = () =>
   db.execute(sql`truncate users, sessions, api_tokens, products, orders, order_items restart identity cascade`)

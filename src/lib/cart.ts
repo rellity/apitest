@@ -9,8 +9,10 @@ const MAX_QTY = 99
 // The cookie lives in the browser, so the user can edit it to anything.
 // Treat it like any other user input: keep only positive whole-number ids
 // and quantities, otherwise {"1": -5} becomes an order with a negative total.
-export const readCart = (c: Context): Cart => {
-  const raw = getCookie(c, COOKIE)
+export const readCart = (c: Context): Cart => parseCart(getCookie(c, COOKIE))
+
+// Pure: string in, Cart out. No request, no cookie API, so it's unit-testable.
+export const parseCart = (raw: string | undefined): Cart => {
   if (!raw) return {}
   let parsed: unknown
   try {
