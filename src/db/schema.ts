@@ -1,4 +1,5 @@
-import { pgTable, integer, text, timestamp, boolean } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
+import { pgTable, integer, text, timestamp, boolean, check } from 'drizzle-orm/pg-core'
 
 export const users = pgTable('users', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
@@ -29,7 +30,10 @@ export const products = pgTable('products', {
   imageUrl: text('image_url').notNull(),
   stock: integer('stock').notNull().default(0),
   featured: boolean('featured').notNull().default(false),
-})
+}, (t) => [
+  // Last line of defense: even buggy app code can't oversell.
+  check('products_stock_non_negative', sql`${t.stock} >= 0`),
+])
 
 export type Product = typeof products.$inferSelect
 

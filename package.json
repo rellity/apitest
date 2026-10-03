@@ -4,8 +4,12 @@
     "dev": "bun run dev.ts",
     "build": "bun run build.ts",
     "start": "bun run dist/index.js",
+    "test": "bun test",
     "db:studio": "bun --bun drizzle-kit studio",
-    "db:push": "bun --bun drizzle-kit push"
+    "db:push": "bun --bun drizzle-kit push",
+    "db:generate": "bun --bun drizzle-kit generate",
+    "db:migrate": "bun --bun drizzle-kit migrate",
+    "db:seed": "bun run src/scripts/seed.ts"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans": "^5.3.0",
