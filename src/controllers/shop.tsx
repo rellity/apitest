@@ -15,7 +15,7 @@ import { Product } from '../models/product'
 import { OrderModel, OutOfStockError } from '../models/order'
 import { UserModel } from '../models/user'
 import { readCart, writeCart, cartCount, type Cart } from '../lib/cart'
-import { currentUser, signIn, signOut } from '../lib/auth'
+import { currentUser, signIn, signOut, safeRedirect } from '../lib/auth'
 
 const cartLines = async (cart: Cart): Promise<CartLine[]> => {
   const found = await Product.byIds(Object.keys(cart).map(Number))
@@ -23,8 +23,6 @@ const cartLines = async (cart: Cart): Promise<CartLine[]> => {
 }
 
 const subtotal = (lines: CartLine[]) => lines.reduce((sum, l) => sum + l.product.priceCents * l.quantity, 0)
-
-const safeRedirect = (path: string | undefined) => (path && path.startsWith('/shop') ? path : '/shop')
 
 export const shopController = new Hono()
   .get('/', async (c) => {

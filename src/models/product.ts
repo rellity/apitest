@@ -2,6 +2,8 @@ import { eq, ilike, inArray } from 'drizzle-orm'
 import { db } from '../db'
 import { products } from '../db/schema'
 
+export type ProductInput = Omit<typeof products.$inferInsert, 'id'>
+
 export const Product = {
   all: () => db.select().from(products).orderBy(products.id),
   featured: () => db.select().from(products).where(eq(products.featured, true)).orderBy(products.id),
@@ -13,4 +15,8 @@ export const Product = {
   byIds: (ids: number[]) => (ids.length ? db.select().from(products).where(inArray(products.id, ids)) : Promise.resolve([])),
   // Let Postgres filter instead of loading every row into JS.
   search: (q: string) => db.select().from(products).where(ilike(products.name, `%${q}%`)).orderBy(products.id),
+  create: async (input: ProductInput) => (await db.insert(products).values(input).returning())[0],
+  update: async (id: number, input: ProductInput) =>
+    (await db.update(products).set(input).where(eq(products.id, id)).returning())[0],
+  remove: (id: number) => db.delete(products).where(eq(products.id, id)),
 }

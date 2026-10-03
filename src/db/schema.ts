@@ -1,12 +1,18 @@
 import { sql } from 'drizzle-orm'
 import { pgTable, integer, text, timestamp, boolean, check } from 'drizzle-orm/pg-core'
 
+// $type narrows a text column to a union in TypeScript only. The database still
+// stores text, so writes must go through code that uses these types.
+export type Role = 'buyer' | 'admin'
+export const ORDER_STATUSES = ['placed', 'shipped', 'delivered', 'cancelled'] as const
+export type OrderStatus = (typeof ORDER_STATUSES)[number]
+
 export const users = pgTable('users', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
-  role: text('role').notNull().default('buyer'),
+  role: text('role').$type<Role>().notNull().default('buyer'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 
@@ -46,7 +52,7 @@ export const orders = pgTable('orders', {
   city: text('city').notNull(),
   phone: text('phone').notNull(),
   subtotalCents: integer('subtotal_cents').notNull(),
-  status: text('status').notNull().default('placed'),
+  status: text('status').$type<OrderStatus>().notNull().default('placed'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 

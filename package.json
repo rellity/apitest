@@ -9,7 +9,8 @@
     "db:push": "bun --bun drizzle-kit push",
     "db:generate": "bun --bun drizzle-kit generate",
     "db:migrate": "bun --bun drizzle-kit migrate",
-    "db:seed": "bun run src/scripts/seed.ts"
+    "db:seed": "bun run src/scripts/seed.ts",
+    "admin:grant": "bun run src/scripts/make-admin.ts"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans": "^5.3.0",

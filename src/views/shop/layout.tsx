@@ -19,6 +19,14 @@ export const CartBadge = ({ count }: { count: number }) => (
 const AuthLinks = ({ user }: { user?: User }) =>
   user ? (
     <div class="flex shrink-0 items-center gap-3">
+      {user.role === 'admin' && (
+        <a
+          href="/admin"
+          class="rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        >
+          Admin
+        </a>
+      )}
       <a
         href="/shop/account/orders"
         class="hidden items-center gap-1.5 text-sm text-zinc-600 hover:text-zinc-900 sm:flex dark:text-zinc-300 dark:hover:text-zinc-100"

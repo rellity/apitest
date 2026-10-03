@@ -1,9 +1,9 @@
 import { beforeEach, expect, test } from 'bun:test'
-import { eq, sql } from 'drizzle-orm'
-import app from '../src/index'
+import { eq } from 'drizzle-orm'
 import { db } from '../src/db'
-import { orders, products, users } from '../src/db/schema'
+import { orders, products } from '../src/db/schema'
 import { OrderModel, OutOfStockError } from '../src/models/order'
+import { createUser, request, resetDb } from './helpers'
 
 type Product = typeof products.$inferSelect
 let userId: number
@@ -11,9 +11,8 @@ let watch: Product
 let lamp: Product
 
 beforeEach(async () => {
-  await db.execute(sql`truncate users, sessions, products, orders, order_items restart identity cascade`)
-  const [user] = await db.insert(users).values({ name: 'T', email: 't@example.com', passwordHash: 'x' }).returning()
-  userId = user!.id
+  await resetDb()
+  userId = (await createUser()).id
   const rows = await db
     .insert(products)
     .values([
@@ -59,6 +58,6 @@ test('database refuses negative stock even if app code is wrong', async () => {
 
 test('tampered cart cookie is ignored', async () => {
   const cart = encodeURIComponent(JSON.stringify({ [watch.id]: -5, x: 3, [lamp.id]: 1.5 }))
-  const res = await app.request('/shop/cart', { headers: { cookie: `cart=${cart}` } })
+  const res = await request('/shop/cart', { cookie: `cart=${cart}` })
   expect(await res.text()).toContain('Your cart is empty')
 })
