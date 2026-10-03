@@ -15,8 +15,10 @@ import { newOrderSchema, productQuerySchema, tokenRequestSchema } from '../lib/s
 // Every error has the same shape, so clients handle errors in one place:
 // { error: { code, message, issues? } }
 const apiError = (code: string, message: string) => ({ error: { code, message } })
-const rateLimited = (retryAfterMs: number) =>
-  apiError('rate_limited', `Too many requests. Retry in ${Math.ceil(retryAfterMs / 1000)} seconds.`)
+const rateLimited = (retryAfterMs: number) => {
+  const seconds = Math.ceil(retryAfterMs / 1000)
+  return apiError('rate_limited', `Too many requests. Retry in ${seconds} second${seconds === 1 ? '' : 's'}.`)
+}
 
 // zValidator + a hook that turns zod issues into our error shape.
 // After this middleware, c.req.valid(target) is fully typed from the schema.
