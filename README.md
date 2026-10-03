@@ -61,6 +61,7 @@ The full write-up, one chapter per lesson with references, is in
 | 4 | Admin panel | `e81e0cc` | Authentication vs authorization, typed middleware, REST verbs, FK errors, state machines |
 | 5 | JSON API | `b7d356d` | zod schemas, hashed bearer tokens, DTOs, consistent errors, typed RPC client |
 | 6 | Unit & E2E tests | `94162a0`, `57f2f4c` | Test pyramid, pure functions, table-driven tests, Playwright journeys |
+| 7 | Rate limiting | `dd6d01f` | Fixed/sliding windows, token & leaky buckets, Postgres-backed counters, choosing keys, 429s |
 
 ## Layout
 
