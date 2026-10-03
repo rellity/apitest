@@ -1,4 +1,4 @@
-import { eq, ilike, inArray } from 'drizzle-orm'
+import { and, eq, ilike, inArray } from 'drizzle-orm'
 import { db } from '../db'
 import { products } from '../db/schema'
 
@@ -14,7 +14,13 @@ export const Product = {
   // One query for the whole cart instead of one per line (the "N+1" problem).
   byIds: (ids: number[]) => (ids.length ? db.select().from(products).where(inArray(products.id, ids)) : Promise.resolve([])),
   // Let Postgres filter instead of loading every row into JS.
-  search: (q: string) => db.select().from(products).where(ilike(products.name, `%${q}%`)).orderBy(products.id),
+  // and() drops undefined conditions, so each filter is optional.
+  list: ({ q, category }: { q?: string; category?: string } = {}) =>
+    db
+      .select()
+      .from(products)
+      .where(and(q ? ilike(products.name, `%${q}%`) : undefined, category ? eq(products.category, category) : undefined))
+      .orderBy(products.id),
   create: async (input: ProductInput) => (await db.insert(products).values(input).returning())[0],
   update: async (id: number, input: ProductInput) =>
     (await db.update(products).set(input).where(eq(products.id, id)).returning())[0],

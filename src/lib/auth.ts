@@ -3,6 +3,7 @@ import { createMiddleware } from 'hono/factory'
 import type { Context } from 'hono'
 import type { User } from '../db/schema'
 import { SessionModel } from '../models/user'
+import { ApiTokenModel } from '../models/api-token'
 
 const COOKIE = 'session'
 
@@ -42,6 +43,23 @@ export const requireAdmin = createMiddleware<AdminEnv>(async (c, next) => {
   if (!user) return c.redirect(`/shop/login?redirect=${encodeURIComponent(c.req.path)}`)
   // 403: logged in but not allowed. Logging in again won't help.
   if (user.role !== 'admin') return c.text('Forbidden', 403)
+  c.set('user', user)
+  await next()
+})
+
+export const bearerToken = (c: Context) => c.req.header('authorization')?.match(/^Bearer (\S+)$/)?.[1]
+
+// For the JSON API: no cookies, no redirects. Scripts send
+// "Authorization: Bearer shp_..." and get a JSON 401 if it's wrong.
+export type ApiEnv = { Variables: { user: User } }
+
+export const requireToken = createMiddleware<ApiEnv>(async (c, next) => {
+  const token = bearerToken(c)
+  const user = token ? await ApiTokenModel.user(token) : undefined
+  if (!user) {
+    c.header('WWW-Authenticate', 'Bearer')
+    return c.json({ error: { code: 'unauthorized', message: 'Send a valid token: Authorization: Bearer <token>' } }, 401)
+  }
   c.set('user', user)
   await next()
 })

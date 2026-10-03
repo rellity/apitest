@@ -15,6 +15,7 @@ import { Product } from '../models/product'
 import { OrderModel, OutOfStockError } from '../models/order'
 import { UserModel } from '../models/user'
 import { readCart, writeCart, cartCount, type Cart } from '../lib/cart'
+import { shippingSchema } from '../lib/schemas'
 import { currentUser, signIn, signOut, safeRedirect } from '../lib/auth'
 
 const cartLines = async (cart: Cart): Promise<CartLine[]> => {
@@ -47,7 +48,7 @@ export const shopController = new Hono()
   })
   .get('/search', async (c) => {
     const q = (c.req.query('q') ?? '').trim()
-    return c.html(<ProductGrid products={await (q ? Product.search(q) : Product.all())} />)
+    return c.html(<ProductGrid products={await Product.list({ q })} />)
   })
   .get('/products/:slug', async (c) => {
     const product = await Product.bySlug(c.req.param('slug'))
@@ -151,13 +152,6 @@ export const shopController = new Hono()
     const lines = await cartLines(cart)
     if (lines.length === 0) return c.redirect('/shop')
 
-    const body = await c.req.parseBody()
-    const name = String(body.name ?? '').trim()
-    const email = String(body.email ?? '').trim()
-    const phone = String(body.phone ?? '').trim()
-    const city = String(body.city ?? '').trim()
-    const address = String(body.address ?? '').trim()
-
     const checkoutError = (error: string) =>
       c.html(
         <Layout>
@@ -168,17 +162,15 @@ export const shopController = new Hono()
         400,
       )
 
-    if (!name || !email || !phone || !city || !address) return checkoutError('Please fill in all fields.')
+    // Same schema the JSON API uses. Unknown fields (like "payment") are dropped.
+    const shipping = shippingSchema.safeParse(await c.req.parseBody())
+    if (!shipping.success) return checkoutError(shipping.error.issues[0]?.message ?? 'Please check the form.')
 
     let order
     try {
       order = await OrderModel.create({
         userId: user.id,
-        name,
-        email,
-        phone,
-        city,
-        address,
+        ...shipping.data,
         items: lines.map((l) => ({
           productId: l.product.id,
           name: l.product.name,

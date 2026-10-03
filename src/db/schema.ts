@@ -68,3 +68,15 @@ export const orderItems = pgTable('order_items', {
 })
 
 export type OrderItem = typeof orderItems.$inferSelect
+
+// API tokens are passwords for scripts. Store only a SHA-256 hash: if the
+// database leaks, the hashes can't be used to call the API.
+export const apiTokens = pgTable('api_tokens', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  userId: integer('user_id').notNull().references(() => users.id),
+  name: text('name').notNull(),
+  tokenHash: text('token_hash').notNull().unique(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+})
+
+export type ApiToken = typeof apiTokens.$inferSelect

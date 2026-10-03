@@ -5,7 +5,7 @@ import { users, type Role } from '../src/db/schema'
 import { SessionModel } from '../src/models/user'
 
 export const resetDb = () =>
-  db.execute(sql`truncate users, sessions, products, orders, order_items restart identity cascade`)
+  db.execute(sql`truncate users, sessions, api_tokens, products, orders, order_items restart identity cascade`)
 
 let n = 0
 export const createUser = async (role: Role = 'buyer') => {

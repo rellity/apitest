@@ -62,16 +62,19 @@ export const OrderModel = {
         })
         .returning()
       if (!order) throw new Error('failed to create order')
-      await tx.insert(orderItems).values(
-        input.items.map((i) => ({
-          orderId: order.id,
-          productId: i.productId,
-          name: i.name,
-          priceCents: i.priceCents,
-          quantity: i.quantity,
-        })),
-      )
-      return order
+      const items = await tx
+        .insert(orderItems)
+        .values(
+          input.items.map((i) => ({
+            orderId: order.id,
+            productId: i.productId,
+            name: i.name,
+            priceCents: i.priceCents,
+            quantity: i.quantity,
+          })),
+        )
+        .returning()
+      return { ...order, items }
     }),
   byId: async (id: number): Promise<(Order & { items: OrderItem[] }) | undefined> => {
     const [order] = await db.select().from(orders).where(eq(orders.id, id))
