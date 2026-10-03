@@ -4,15 +4,27 @@ import type { Context } from 'hono'
 export type Cart = Record<string, number> // productId -> quantity
 
 const COOKIE = 'cart'
+const MAX_QTY = 99
 
+// The cookie lives in the browser, so the user can edit it to anything.
+// Treat it like any other user input: keep only positive whole-number ids
+// and quantities, otherwise {"1": -5} becomes an order with a negative total.
 export const readCart = (c: Context): Cart => {
   const raw = getCookie(c, COOKIE)
   if (!raw) return {}
+  let parsed: unknown
   try {
-    const parsed = JSON.parse(raw)
-    if (parsed && typeof parsed === 'object') return parsed
-  } catch { }
-  return {}
+    parsed = JSON.parse(raw)
+  } catch {
+    return {}
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+
+  const cart: Cart = {}
+  for (const [id, qty] of Object.entries(parsed)) {
+    if (/^[1-9]\d*$/.test(id) && Number.isInteger(qty) && qty > 0) cart[id] = Math.min(qty, MAX_QTY)
+  }
+  return cart
 }
 
 export const writeCart = (c: Context, cart: Cart) => {

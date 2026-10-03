@@ -12,18 +12,14 @@ import { Toast } from '../views/shop/toast'
 import { BannerCarousel } from '../views/shop/banners'
 import { FeaturedSection } from '../views/shop/featured'
 import { Product } from '../models/product'
-import { OrderModel } from '../models/order'
+import { OrderModel, OutOfStockError } from '../models/order'
 import { UserModel } from '../models/user'
 import { readCart, writeCart, cartCount, type Cart } from '../lib/cart'
 import { currentUser, signIn, signOut } from '../lib/auth'
 
 const cartLines = async (cart: Cart): Promise<CartLine[]> => {
-  const lines: CartLine[] = []
-  for (const [productId, quantity] of Object.entries(cart)) {
-    const product = await Product.byId(Number(productId))
-    if (product) lines.push({ product, quantity })
-  }
-  return lines
+  const found = await Product.byIds(Object.keys(cart).map(Number))
+  return found.map((product) => ({ product, quantity: cart[product.id]! }))
 }
 
 const subtotal = (lines: CartLine[]) => lines.reduce((sum, l) => sum + l.product.priceCents * l.quantity, 0)
@@ -52,10 +48,8 @@ export const shopController = new Hono()
     )
   })
   .get('/search', async (c) => {
-    const q = (c.req.query('q') ?? '').trim().toLowerCase()
-    const all = await Product.all()
-    const filtered = q ? all.filter((p) => p.name.toLowerCase().includes(q)) : all
-    return c.html(<ProductGrid products={filtered} />)
+    const q = (c.req.query('q') ?? '').trim()
+    return c.html(<ProductGrid products={await (q ? Product.search(q) : Product.all())} />)
   })
   .get('/products/:slug', async (c) => {
     const product = await Product.bySlug(c.req.param('slug'))
@@ -166,31 +160,38 @@ export const shopController = new Hono()
     const city = String(body.city ?? '').trim()
     const address = String(body.address ?? '').trim()
 
-    if (!name || !email || !phone || !city || !address) {
-      return c.html(
+    const checkoutError = (error: string) =>
+      c.html(
         <Layout>
           <ShopLayout cartCount={cartCount(cart)} user={user}>
-            <CheckoutPage lines={lines} subtotalCents={subtotal(lines)} user={user} error="Please fill in all fields." />
+            <CheckoutPage lines={lines} subtotalCents={subtotal(lines)} user={user} error={error} />
           </ShopLayout>
         </Layout>,
         400,
       )
-    }
 
-    const order = await OrderModel.create({
-      userId: user.id,
-      name,
-      email,
-      phone,
-      city,
-      address,
-      items: lines.map((l) => ({
-        productId: l.product.id,
-        name: l.product.name,
-        priceCents: l.product.priceCents,
-        quantity: l.quantity,
-      })),
-    })
+    if (!name || !email || !phone || !city || !address) return checkoutError('Please fill in all fields.')
+
+    let order
+    try {
+      order = await OrderModel.create({
+        userId: user.id,
+        name,
+        email,
+        phone,
+        city,
+        address,
+        items: lines.map((l) => ({
+          productId: l.product.id,
+          name: l.product.name,
+          priceCents: l.product.priceCents,
+          quantity: l.quantity,
+        })),
+      })
+    } catch (err) {
+      if (err instanceof OutOfStockError) return checkoutError(`Sorry, ${err.productName} doesn't have enough stock left.`)
+      throw err
+    }
     writeCart(c, {})
     c.header('HX-Redirect', `/shop/orders/${order.id}`)
     return c.body(null)
@@ -199,7 +200,9 @@ export const shopController = new Hono()
     const user = await currentUser(c)
     if (!user) return c.redirect(`/shop/login?redirect=/shop/orders/${c.req.param('id')}`)
 
-    const order = await OrderModel.byId(Number(c.req.param('id')))
+    const id = Number(c.req.param('id'))
+    const order = Number.isInteger(id) ? await OrderModel.byId(id) : undefined
+    // Same 404 for "doesn't exist" and "not yours" so ids can't be probed.
     if (!order || order.userId !== user.id) return c.notFound()
     return c.html(
       <Layout>
