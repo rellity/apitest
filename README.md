@@ -49,6 +49,9 @@ bun run admin:grant you@example.com   # then open /admin
 Each lesson is one commit. Read the diff with `git show <commit>`, or check it out
 with `git checkout <commit>` to run the app as it was at that point.
 
+The full write-up, one chapter per lesson with references, is in
+[`docs/shopilyo-backend-lessons.docx`](docs/shopilyo-backend-lessons.docx).
+
 | # | Lesson | Commit | Topics |
 | --- | --- | --- | --- |
 | 0 | The starting shop | `f49138b` | Hono routing, JSX views, htmx swaps, cookie cart, sessions, CSRF |
