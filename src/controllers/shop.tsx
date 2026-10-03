@@ -1,4 +1,4 @@
-import { Hono } from 'hono'
+import { Hono, type Context } from 'hono'
 import { Layout } from '../views/layout'
 import { ShopLayout, CartBadge } from '../views/shop/layout'
 import { ProductGrid, CategoryFilter } from '../views/shop/products'
@@ -17,6 +17,31 @@ import { UserModel } from '../models/user'
 import { readCart, writeCart, cartCount, type Cart } from '../lib/cart'
 import { shippingSchema } from '../lib/schemas'
 import { currentUser, signIn, signOut, safeRedirect } from '../lib/auth'
+import { clientIp, rateLimit, retryText, setRateLimitHeaders } from '../lib/rate-limit'
+import { limits } from '../lib/limits'
+
+const loginError = (c: Context, redirect: string, error: string, status: 400 | 429) =>
+  c.html(
+    <Layout>
+      <ShopLayout cartCount={cartCount(readCart(c))}>
+        <LoginPage redirect={redirect} error={error} />
+      </ShopLayout>
+    </Layout>,
+    status,
+  )
+
+const registerError = (c: Context, redirect: string, error: string, status: 400 | 429) =>
+  c.html(
+    <Layout>
+      <ShopLayout cartCount={cartCount(readCart(c))}>
+        <RegisterPage redirect={redirect} error={error} />
+      </ShopLayout>
+    </Layout>,
+    status,
+  )
+
+// Body fields are cached by Hono, so reading them here and in the handler is fine.
+const formRedirect = async (c: Context) => safeRedirect(String((await c.req.parseBody()).redirect ?? ''))
 
 const cartLines = async (cart: Cart): Promise<CartLine[]> => {
   const found = await Product.byIds(Object.keys(cart).map(Number))
@@ -225,28 +250,36 @@ export const shopController = new Hono()
       </Layout>,
     )
   })
-  .post('/login', async (c) => {
-    const body = await c.req.parseBody()
-    const email = String(body.email ?? '').trim()
-    const password = String(body.password ?? '')
-    const redirect = safeRedirect(String(body.redirect ?? ''))
+  .post(
+    '/login',
+    // Per IP, before any work: password hashing is slow on purpose, so the
+    // limiter protects the CPU as well as the accounts.
+    rateLimit(limits.loginPerIp, clientIp, async (c, d) =>
+      loginError(c, await formRedirect(c), `Too many login attempts. Try again ${retryText(d.retryAfterMs)}.`, 429),
+    ),
+    async (c) => {
+      const body = await c.req.parseBody()
+      const email = String(body.email ?? '').trim()
+      const password = String(body.password ?? '')
+      const redirect = safeRedirect(String(body.redirect ?? ''))
 
-    const user = email ? await UserModel.byEmail(email) : undefined
-    const valid = user ? await UserModel.verifyPassword(user, password) : false
-    if (!user || !valid) {
-      return c.html(
-        <Layout>
-          <ShopLayout cartCount={cartCount(readCart(c))}>
-            <LoginPage redirect={redirect} error="Incorrect email or password." />
-          </ShopLayout>
-        </Layout>,
-        400,
-      )
-    }
+      // Per email, shared across servers. Counted whether or not the account
+      // exists, so the answer doesn't reveal which emails are registered.
+      if (email) {
+        const perEmail = await limits.loginPerEmail.take(email.toLowerCase())
+        setRateLimitHeaders(c, limits.loginPerEmail.limit, perEmail)
+        if (!perEmail.allowed)
+          return loginError(c, redirect, `Too many attempts for this email. Try again ${retryText(perEmail.retryAfterMs)}.`, 429)
+      }
 
-    await signIn(c, user.id)
-    return c.redirect(redirect)
-  })
+      const user = email ? await UserModel.byEmail(email) : undefined
+      const valid = user ? await UserModel.verifyPassword(user, password) : false
+      if (!user || !valid) return loginError(c, redirect, 'Incorrect email or password.', 400)
+
+      await signIn(c, user.id)
+      return c.redirect(redirect)
+    },
+  )
   .get('/register', async (c) => {
     if (await currentUser(c)) return c.redirect(safeRedirect(c.req.query('redirect')))
     return c.html(
@@ -257,35 +290,32 @@ export const shopController = new Hono()
       </Layout>,
     )
   })
-  .post('/register', async (c) => {
-    const body = await c.req.parseBody()
-    const name = String(body.name ?? '').trim()
-    const email = String(body.email ?? '').trim()
-    const password = String(body.password ?? '')
-    const redirect = safeRedirect(String(body.redirect ?? ''))
+  .post(
+    '/register',
+    rateLimit(limits.registerPerIp, clientIp, async (c, d) =>
+      registerError(c, await formRedirect(c), `Too many sign-ups from your network. Try again ${retryText(d.retryAfterMs)}.`, 429),
+    ),
+    async (c) => {
+      const body = await c.req.parseBody()
+      const name = String(body.name ?? '').trim()
+      const email = String(body.email ?? '').trim()
+      const password = String(body.password ?? '')
+      const redirect = safeRedirect(String(body.redirect ?? ''))
 
-    const fieldError =
-      !name || !email || password.length < 8
-        ? 'Please fill in all fields. Password must be at least 8 characters.'
-        : (await UserModel.byEmail(email))
-          ? 'An account with that email already exists.'
-          : undefined
+      const fieldError =
+        !name || !email || password.length < 8
+          ? 'Please fill in all fields. Password must be at least 8 characters.'
+          : (await UserModel.byEmail(email))
+            ? 'An account with that email already exists.'
+            : undefined
 
-    if (fieldError) {
-      return c.html(
-        <Layout>
-          <ShopLayout cartCount={cartCount(readCart(c))}>
-            <RegisterPage redirect={redirect} error={fieldError} />
-          </ShopLayout>
-        </Layout>,
-        400,
-      )
-    }
+      if (fieldError) return registerError(c, redirect, fieldError, 400)
 
-    const user = await UserModel.create({ name, email, password })
-    await signIn(c, user.id)
-    return c.redirect(redirect)
-  })
+      const user = await UserModel.create({ name, email, password })
+      await signIn(c, user.id)
+      return c.redirect(redirect)
+    },
+  )
   .post('/logout', async (c) => {
     await signOut(c)
     return c.redirect('/shop')

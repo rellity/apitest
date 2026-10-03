@@ -80,3 +80,11 @@ export const apiTokens = pgTable('api_tokens', {
 })
 
 export type ApiToken = typeof apiTokens.$inferSelect
+
+// Shared rate-limit counters (see pgFixedWindow in src/lib/rate-limit.ts).
+// One row per key; the window start tells whether the count is current.
+export const rateLimits = pgTable('rate_limits', {
+  key: text('key').primaryKey(),
+  windowStart: timestamp('window_start').notNull(),
+  count: integer('count').notNull(),
+})
