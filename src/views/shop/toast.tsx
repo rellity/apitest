@@ -2,7 +2,9 @@ import { CheckCircleIcon, XIcon } from './icons'
 
 export const Toast = ({ message, tone = 'success' }: { message: string; tone?: 'success' | 'error' }) => (
   <div
-    hx-swap-oob="beforeend:#toast-region"
+    // htmx strips the wrapper for non-outer oob swaps by default; strip:false
+    // keeps this div (its role, classes and auto-remove timer).
+    hx-swap-oob="beforeend target:#toast-region strip:false"
     x-data=""
     x-init="setTimeout(() => $el.remove(), 3000)"
     role={tone === 'error' ? 'alert' : 'status'}
